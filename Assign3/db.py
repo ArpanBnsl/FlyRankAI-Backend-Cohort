@@ -39,3 +39,15 @@ def initialize_database() -> None:
                 "INSERT INTO tasks (title, done) VALUES (%s, %s)",
                 [("task 1", False), ("task 2", True), ("task 3", False)],
             )
+
+
+def list_tasks() -> list[dict]:
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT id, title, done FROM tasks ORDER BY id")
+        return cursor.fetchall()
+
+
+def get_task(task_id: int) -> dict | None:
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT id, title, done FROM tasks WHERE id = %s", (task_id,))
+        return cursor.fetchone()
