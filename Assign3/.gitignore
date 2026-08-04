@@ -1,0 +1,8 @@
+# Local configuration and Python build artifacts
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
