@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -48,6 +49,11 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Postgres Task API", lifespan=lifespan)
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(_: Request, __: RequestValidationError):
+    return JSONResponse(status_code=400, content={"error": "Invalid request body"})
 
 
 @app.get("/")
