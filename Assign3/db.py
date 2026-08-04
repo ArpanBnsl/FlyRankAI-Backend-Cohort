@@ -51,3 +51,27 @@ def get_task(task_id: int) -> dict | None:
     with get_connection() as connection, connection.cursor() as cursor:
         cursor.execute("SELECT id, title, done FROM tasks WHERE id = %s", (task_id,))
         return cursor.fetchone()
+
+
+def create_task(title: str, done: bool = False) -> dict:
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id, title, done",
+            (title, done),
+        )
+        return cursor.fetchone()
+
+
+def update_task(task_id: int, title: str, done: bool) -> dict | None:
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING id, title, done",
+            (title, done, task_id),
+        )
+        return cursor.fetchone()
+
+
+def delete_task(task_id: int) -> bool:
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute("DELETE FROM tasks WHERE id = %s RETURNING id", (task_id,))
+        return cursor.fetchone() is not None
