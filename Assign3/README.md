@@ -27,3 +27,14 @@ Copy `.env.example` to `.env` and set a local PostgreSQL connection string. The 
 pip install -r requirements.txt
 uvicorn main:app --reload --port 3000
 ```
+
+## Stage 4: Run the whole stack
+
+Stop the Stage 0 database first if it is using port 5432, then run:
+
+```bash
+docker stop taskdb
+docker compose up --build
+```
+
+The `taskdata` named volume keeps PostgreSQL rows when the stack is stopped and started again.
