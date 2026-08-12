@@ -1,10 +1,10 @@
 import os
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from src.llm.schema import TriageRequest, TriageResponse, get_stub_response
+from src.llm.client import call_llm_raw
 
 router = APIRouter()
 
@@ -26,7 +26,6 @@ async def triage_message(request: Request):
     try:
         validated_request = TriageRequest(**body)
     except ValidationError as e:
-        # Extract offending field name
         errors = e.errors()
         field_name = ".".join(str(loc) for loc in errors[0]["loc"]) if errors else "text"
         error_msg = errors[0]["msg"] if errors else "Invalid input data."
@@ -44,5 +43,23 @@ async def triage_message(request: Request):
     if stub_mode:
         return get_stub_response()
 
-    # Place holder for model call in subsequent stages
-    return get_stub_response()
+    # Stage 2: Call model directly with prompt v1
+    raw_content, usage = call_llm_raw(validated_request.text)
+    
+    # Simple parse for Stage 2 (Stage 3 adds strict validation & repair)
+    import json
+    cleaned_content = raw_content.strip()
+    if cleaned_content.startswith("```"):
+        cleaned_content = cleaned_content.strip("`")
+        if cleaned_content.startswith("json"):
+            cleaned_content = cleaned_content[4:].strip()
+    
+    try:
+        parsed_json = json.loads(cleaned_content)
+        return TriageResponse(**parsed_json)
+    except Exception:
+        # Fallback for Stage 2 before Stage 3 repair pipeline
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"raw_output": raw_content, "usage": usage}
+        )
