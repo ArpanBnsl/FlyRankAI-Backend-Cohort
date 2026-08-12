@@ -36,7 +36,7 @@ def load_prompt_template() -> str:
 
 def get_openai_client() -> OpenAI:
     base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
-    api_key = os.environ.get("LLM_API_KEY", "")
+    api_key = os.environ.get("LLM_API_KEY", "").strip() or "dummy_key"
     # Explicitly override default 10-min timeout and default retries
     return OpenAI(
         base_url=base_url,
