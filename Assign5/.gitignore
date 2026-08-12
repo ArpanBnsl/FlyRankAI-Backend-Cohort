@@ -1,0 +1,9 @@
+.env
+.env.local
+*.log
+logs/
+quarantine.jsonl
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
