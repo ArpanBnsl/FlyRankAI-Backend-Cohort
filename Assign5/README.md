@@ -148,3 +148,14 @@ Assuming average usage per request:
 1. **Response Caching:** Implement an in-memory or Redis LRU cache hashing `(input_text, prompt_version)` to return cached results instantly for repeated queries and save API quota.
 2. **Fine-grained Few-Shot Dynamic Prompting:** Dynamically select relevant few-shot examples from an example bank based on input similarity embeddings.
 3. **Async Batch Processing Endpoint:** Add a bulk `/triage/batch` endpoint using `asyncio.gather` with semaphore concurrency limits to process background CSV files.
+
+---
+
+## Bonus Stage: AI vs Me
+
+Comparative analysis of hand-built integration versus AI-generated implementation:
+
+1. **Timeout Defaults:** Hand-built code explicitly sets `timeout=30.0` on OpenAI client. AI code left default SDK 10-minute timeout unchanged.
+2. **Auth Retry Guard:** Hand-built code sets `max_retries=0` and filters retries so HTTP 401 (invalid key) is never retried. AI code retried 401 errors, eating daily quota.
+3. **Prompt Injection Isolation:** Hand-built code JSON-encodes input payload to isolate untrusted text. AI code concatenated raw strings directly.
+4. **Quarantine Logging:** Hand-built code writes full failure context to `logs/quarantine.jsonl` on 2nd failure and returns HTTP 422. AI code returned generic 500 error without log auditing.
