@@ -2,9 +2,14 @@ import os
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from openai import AuthenticationError, APIError
 
 from src.llm.schema import TriageRequest, TriageResponse, get_stub_response
-from src.llm.client import call_llm_with_repair
+from src.llm.client import (
+    call_llm_with_repair,
+    LLMDisabledException,
+    LLMTimeoutException
+)
 
 router = APIRouter()
 
@@ -46,6 +51,35 @@ async def triage_message(request: Request):
     try:
         validated_response, metadata = call_llm_with_repair(validated_request.text)
         return validated_response
+    except LLMDisabledException as kill_sw_err:
+        # Kill switch active: return deterministic fallback response with 503 or 200 fallback
+        fallback = get_stub_response()
+        fallback.reason = "Kill switch active (LLM_ENABLED=false): Returning deterministic fallback."
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": str(kill_sw_err),
+                "fallback": fallback.model_dump()
+            }
+        )
+    except LLMTimeoutException as timeout_err:
+        # 504 Gateway Timeout when model call times out
+        return JSONResponse(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            content={
+                "detail": str(timeout_err),
+                "error": "GATEWAY_TIMEOUT"
+            }
+        )
+    except AuthenticationError as auth_err:
+        # 401 Unauthorized (invalid key, never retried)
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={
+                "detail": f"LLM Provider Authentication Failed: {str(auth_err)}",
+                "error": "UNAUTHORIZED"
+            }
+        )
     except ValueError as val_err:
         # 422 HTTP status code for output schema validation failure after repair attempt
         return JSONResponse(
@@ -54,5 +88,13 @@ async def triage_message(request: Request):
                 "detail": f"Model output validation failed: {str(val_err)}",
                 "error": "UNPROCESSABLE_ENTITY",
                 "quarantined": True
+            }
+        )
+    except APIError as api_err:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={
+                "detail": f"Upstream LLM Provider Error: {str(api_err)}",
+                "error": "BAD_GATEWAY"
             }
         )
