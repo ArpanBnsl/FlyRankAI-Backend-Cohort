@@ -14,7 +14,7 @@ Three environment variables define the provider and model configuration:
 Because the application relies solely on standard environment variables and the official OpenAI client SDK, swapping providers (e.g., switching between OpenRouter hosted API and Ollama local LLM) requires zero code changes—only updating three values in `.env`.
 
 ## Setup & Running
-1. Clone repository and install dependencies:
+1. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
@@ -22,7 +22,50 @@ Because the application relies solely on standard environment variables and the 
    ```bash
    cp .env.example .env
    ```
-3. Test provider connectivity:
+3. Start the server (with `LLM_STUB=1` for offline stub testing):
    ```bash
-   python -m src.llm.hello
+   LLM_STUB=1 uvicorn main:app --port 8000
    ```
+
+## Runnable Curl Commands
+
+### 1. Valid Request (200 OK)
+```bash
+curl -X POST "http://localhost:8000/triage" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "I was double charged on my invoice #1042 for the annual subscription."}'
+```
+
+**Expected Response (Schema Valid JSON):**
+```json
+{
+  "category": "bug",
+  "urgency": "high",
+  "confidence": 0.95,
+  "reason": "Stub mode active: Identified login error as a critical bug."
+}
+```
+
+### 2. Deliberately Invalid Request (400 Bad Request)
+Missing required `text` field:
+```bash
+curl -X POST "http://localhost:8000/triage" \
+     -H "Content-Type: application/json" \
+     -d '{}'
+```
+
+**Expected Response (400 Bad Request):**
+```json
+{
+  "detail": "Validation failed for field 'text': Field required",
+  "field": "text",
+  "errors": [
+    {
+      "type": "missing",
+      "loc": ["text"],
+      "msg": "Field required",
+      "input": {}
+    }
+  ]
+}
+```
